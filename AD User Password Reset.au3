@@ -227,13 +227,13 @@ Func FormDetailedView($sAMAccountName)
 		Return
 	EndIf
 
-	Local $idProgress = GUICtrlCreateProgress($iPositionLeft, $iHeightGui / 2 + $iGap / 2, _
-		$iWidthGui - $iPositionLeft * 2, $iHeightInput)
+;~ 	Local $idProgress = GUICtrlCreateProgress($iPositionLeft, $iHeightGui / 2 + $iGap / 2, _
+;~ 		$iWidthGui - $iPositionLeft * 2, $iHeightInput)
 
-	Local $idLabelProgress = GUICtrlCreateLabel("Сбор информации из Active Directory", $iPositionLeft, _
-		$iHeightGui / 2 - $iHeightLabel - $iGap / 2, $iWidthGui - $iPositionLeft * 2, $iHeightLabel, $SS_CENTER)
+;~ 	Local $idLabelProgress = GUICtrlCreateLabel("Сбор информации из Active Directory", $iPositionLeft, _
+;~ 		$iHeightGui / 2 - $iHeightLabel - $iGap / 2, $iWidthGui - $iPositionLeft * 2, $iHeightLabel, $SS_CENTER)
 
-	Sleep(10)
+;~ 	Sleep(10)
 
 	$iWidthLabel = 85
 	$iHeightLabel = 17
@@ -284,13 +284,13 @@ Func FormDetailedView($sAMAccountName)
 
 	;-------------------- MAIN ---------------------
 	For $i = 1 To 4
-		$aAccountInfo[$i][2] = CreateLabelAndInput($aAccountInfo[$i][0], $aAccountInfo[$i][1], "", $aAccountInfo[$i][3])
-		GUICtrlSetData($idProgress, $i * 20)
+		$aAccountInfo[$i][2] = CreateLabelAndInput($aAccountInfo[$i][0], $aAccountInfo[$i][1], $ES_READONLY, $aAccountInfo[$i][3])
+;~ 		GUICtrlSetData($idProgress, $i * 20)
 	Next
 
-	$aAccountInfo[5][2] = CreateLabelAndInput($aAccountInfo[5][0], $aAccountInfo[5][1], $ES_READONLY, "", True)
+	$aAccountInfo[5][2] = CreateLabelAndInput($aAccountInfo[5][0], $aAccountInfo[5][1], $ES_READONLY);, "", True)
 	$previosPos = ControlGetPos($idDetailedViewForm, "", $aAccountInfo[5][2])
-	Local $idButtonChief = GUICtrlCreateButton("...", $previosPos[0] + $previosPos[2] + $iGap, $previosPos[1], $iGap * 3, $previosPos[3])
+;~ 	Local $idButtonChief = GUICtrlCreateButton("...", $previosPos[0] + $previosPos[2] + $iGap, $previosPos[1], $iGap * 3, $previosPos[3])
 
 	$iPositionTop += $iGap * 2 - $iGap
 	CreateLine($iWidthInput + $iWidthLabel, 1)
@@ -355,11 +355,12 @@ Func FormDetailedView($sAMAccountName)
 		StringInStr(GetAttributeText("userAccountControl"), "DONT_EXPIRE_PASSWD"), True))
 	_ArrayAdd($aCheckboxes, CreateAttributeArray("Отключить учетную запись", _
 		_AD_IsObjectDisabled($sAMAccountName), True))
-	_ArrayAdd($aCheckboxes, CreateAttributeArray("Разблокировать учтеную запись", _
+	_ArrayAdd($aCheckboxes, CreateAttributeArray("Учетная запись заблокирована", _
 		_AD_IsObjectLocked($sAMAccountName), True))
 
 	$aCheckboxes[4][2] = GUICtrlCreateCheckbox($aCheckboxes[4][0], $iPositionLeft, $iPositionTop, $iWidthInput + $iWidthLabel, $iHeightLabel)
-	GUICtrlSetState($aCheckboxes[4][2], $aCheckboxes[4][1] ? $GUI_ENABLE : $GUI_DISABLE)
+	GUICtrlSetState(-1, $GUI_DISABLE)
+	If $aCheckboxes[4][1] Then GUICtrlSetState(-1, $GUI_CHECKED)
 	$iPositionTop += $iGap * 2 + $iHeightInput - 4
 
 	GUICtrlCreateLabel("Параметры учетной записи:", $iPositionLeft, $iPositionTop + 3, $iWidthLabel + $iWidthInput, $iHeightLabel)
@@ -373,6 +374,7 @@ Func FormDetailedView($sAMAccountName)
 
 	For $i = 0 To UBound($aCheckboxes, $UBOUND_ROWS) - 2
 		$aCheckboxes[$i][2] = GUICtrlCreateCheckbox($aCheckboxes[$i][0], $iPositionLeft, $iPositionTop, -1, $iHeightLabel)
+		GUICtrlSetState(-1, $GUI_DISABLE)
  		GUICtrlSetBkColor(-1, $GUI_BKCOLOR_TRANSPARENT)
 		If $aCheckboxes[$i][1] Then GUICtrlSetState(-1, $GUI_CHECKED)
 		$iPositionTop += $iGap + $iHeightLabel
@@ -406,12 +408,19 @@ Func FormDetailedView($sAMAccountName)
 	Local $aRadioPhone[5]
 	For $i = 12 To 16
 		$aRadioPhone[$i - 12] = GUICtrlCreateRadio($aAccountInfo[$i][0], $iPositionLeft, $iPositionTop, $iWidthLabel)
-		Local $style = ($i = 15 ? $ES_READONLY : -1)
+		Local $style = $i < 16 ? $ES_READONLY : -1
 		$aAccountInfo[$i][2] = GUICtrlCreateInput($aAccountInfo[$i][1], $iPositionLeft + $iWidthLabel, _
 			$iPositionTop + 1, $iWidthInput, $iHeightInput, $style)
 		$iPositionTop += $iGap + $iHeightInput
 	Next
-	GUICtrlSetState($aRadioPhone[0], $GUI_CHECKED)
+
+	For $i = 12 To 16
+		If GetNormalizedPhoneNumber($aAccountInfo[$i][1]) Or $i = 16 Then
+			GUICtrlSetState($aRadioPhone[$i - 12], $GUI_CHECKED)
+			ExitLoop
+		EndIf
+	Next
+
 
 	$previosPos = ControlGetPos($idDetailedViewForm, "", $ctrl)
 	$iPositionTop = $previosPos[1] + $previosPos[3]
@@ -429,10 +438,15 @@ Func FormDetailedView($sAMAccountName)
 	For $i = 17 To 18
 		$aRadioEmail[$i - 17] = GUICtrlCreateRadio($aAccountInfo[$i][0], $iPositionLeft, $iPositionTop, $iWidthLabel)
 		$aAccountInfo[$i][2] = GUICtrlCreateInput($aAccountInfo[$i][1], $iPositionLeft + $iWidthLabel, $iPositionTop + 1, _
-			$iWidthInput, $iHeightInput)
+			$iWidthInput, $iHeightInput, $i = 17 ? $ES_READONLY : -1)
 		$iPositionTop += $iGap + $iHeightInput
 	Next
-	GUICtrlSetState($aRadioEmail[0], $GUI_CHECKED)
+
+	If $aAccountInfo[17][1] Then
+		GUICtrlSetState($aRadioEmail[0], $GUI_CHECKED)
+	Else
+		GUICtrlSetState($aRadioEmail[1], $GUI_CHECKED)
+	EndIf
 
 
 	;-------------------- HORIZONTAL LINE ---------------------
@@ -442,56 +456,57 @@ Func FormDetailedView($sAMAccountName)
 	CreateLine($iWidthGui - $iGap * 2, 1)
 
 	;-------------------- PASSWORD ---------------------
-	$iPositionLeft = 318 + 116
+;~ 	$iPositionLeft = 318 + 116
 	$iWidthInput = 150
 
-	Local $idLabelPass = GUICtrlCreateLabel("Новый пароль:", $iPositionLeft, $iPositionTop + 3, -1, $iHeightLabel)
+;~ 	Local $idLabelPass = GUICtrlCreateLabel("Новый пароль:", $iPositionLeft, $iPositionTop + 3, -1, $iHeightLabel)
 
-	$previosPos = ControlGetPos($idDetailedViewForm, "", $idLabelPass)
-	Local $idInputPassword = GUICtrlCreateInput(GetNewPassword(), $previosPos[0] + $previosPos[2] + $iGap, _
-		$previosPos[1] - 3, $iWidthInput, $iHeightInput, BitOR($ES_PASSWORD, $ES_AUTOHSCROLL))
-	Local $bInputPasswordLocked = True
-	Local $sDefaultPassChar = GUICtrlSendMsg($idInputPassword, $EM_GETPASSWORDCHAR, 0, 0)
+;~ 	$previosPos = ControlGetPos($idDetailedViewForm, "", $idLabelPass)
+;~ 	Local $idInputPassword = GUICtrlCreateInput(GetNewPassword(), $previosPos[0] + $previosPos[2] + $iGap, _
+;~ 		$previosPos[1] - 3, $iWidthInput, $iHeightInput, BitOR($ES_PASSWORD, $ES_AUTOHSCROLL))
+;~ 	Local $bInputPasswordLocked = True
+;~ 	Local $sDefaultPassChar = GUICtrlSendMsg($idInputPassword, $EM_GETPASSWORDCHAR, 0, 0)
 
 	;-------------------- BUTTONS ---------------------
 	$iPositionLeft = 10
 
-	Local $idButtonBack = GUICtrlCreateButton("Закрыть", $iPositionLeft, _
-		$previosPos[1] - ($iHeightButton - $previosPos[3]) / 2, $iWidthButton, $iHeightButton)
+	Local $idButtonBack = GUICtrlCreateButton("Закрыть", $iPositionLeft, $iPositionTop - $iGap + 3, $iWidthButton, $iHeightButton)
+;~ 		$previosPos[1] - ($iHeightButton - $previosPos[3]) / 2, $iWidthButton, $iHeightButton)
 
 	$previosPos = ControlGetPos($idDetailedViewForm, "", $idButtonBack)
-	Local $idButtonReset = GUICtrlCreateButton("Сбросить и уведомить", $iWidthGui - $iWidthButton * 1.5 - $iGap, _
-		$previosPos[1], $iWidthButton * 1.5, $iHeightButton, $BS_MULTILINE)
+	Local $idButtonReset = GUICtrlCreateButton("Сбросить пароль " & @CRLF & "и выслать уведомления", $iWidthGui - $iWidthButton * 2 - $iGap, _
+		$previosPos[1], $iWidthButton * 2, $iHeightButton, $BS_MULTILINE)
 
-	$previosPos = ControlGetPos($idDetailedViewForm, "", $idButtonReset)
-	Local $idButtonApply = GUICtrlCreateButton("Применить", $previosPos[0] - $iGap - $iWidthButton, _
-		$previosPos[1], $iWidthButton, $iHeightButton)
+;~ 	$previosPos = ControlGetPos($idDetailedViewForm, "", $idButtonReset)
+;~ 	Local $idButtonApply = GUICtrlCreateButton("Применить", $previosPos[0] - $iGap - $iWidthButton, _
+;~ 		$previosPos[1], $iWidthButton, $iHeightButton)
 
-	Local $previosPos2 = ControlGetPos($idDetailedViewForm, "", $idInputPassword)
-	Local $idButtonShowPass = GUICtrlCreateButton("Показать", $previosPos2[0] + $previosPos2[2] + $iGap, _
-		$previosPos[1], $iHeightButton, $iHeightButton, $BS_ICON)
-	GUICtrlSetImage(-1, "shell32.dll", 23, 0)
+;~ 	Local $previosPos2 = ControlGetPos($idDetailedViewForm, "", $idInputPassword)
+;~ 	Local $idButtonShowPass = GUICtrlCreateButton("Показать", $previosPos2[0] + $previosPos2[2] + $iGap, _
+;~ 		$previosPos[1], $iHeightButton, $iHeightButton, $BS_ICON)
+;~ 	GUICtrlSetImage(-1, "shell32.dll", 23, 0)
 
-	Local $bHasUnclockResetRights = _AD_HasUnlockResetRights($sAMAccountName)
+	Local $bHasUnclockResetRights = True;_AD_HasUnlockResetRights($sAMAccountName)
 	Local $bHasWritePropWrite = _AD_HasRequiredRights($sAMAccountName, $ADS_RIGHT_DS_WRITE_PROP)
+	ConsoleWrite("$bHasWritePropWrite: " & $bHasWritePropWrite & @CRLF)
 
 	If $bAccountExpired Or Not $bHasUnclockResetRights Or Not $bHasWritePropWrite Then
 		GUICtrlSetState($idButtonReset, $GUI_DISABLE)
-		GUICtrlSetState($idButtonApply, $GUI_DISABLE)
-		GUICtrlSetState($idInputPassword, $GUI_HIDE)
-		GUICtrlSetState($idButtonShowPass, $GUI_HIDE)
-		GUICtrlSetState($idLabelPass, $GUI_HIDE)
+;~ 		GUICtrlSetState($idButtonApply, $GUI_DISABLE)
+;~ 		GUICtrlSetState($idInputPassword, $GUI_HIDE)
+;~ 		GUICtrlSetState($idButtonShowPass, $GUI_HIDE)
+;~ 		GUICtrlSetState($idLabelPass, $GUI_HIDE)
 		Local $sTmp = "Истек срок действия учетной записи. Сброс пароля невозможен." & @CRLF & _
 			"Продление срока действия учетной записи необходимо согласовать с руководством."
 		If Not $bHasUnclockResetRights Or Not $bHasWritePropWrite Then _
-			$sTmp = "У вашей учетной записи отсутствую права на редактирование" & @CRLF & _
-			"выбранной учетной записи."
+			$sTmp = "У Вас отсутствуют права на редактирование \ снятие блокировки" & @CRLF & _
+			"для выбранной учетной записи."
 		GUICtrlCreateLabel($sTmp, 300, $previosPos[1], $iWidthGui - 600, $previosPos[3], $SS_CENTER)
 		GUICtrlSetBkColor(-1, $COLOR_YELLOW)
 	EndIf
 
-	GUICtrlDelete($idProgress)
-	GUICtrlDelete($idLabelProgress)
+;~ 	GUICtrlDelete($idProgress)
+;~ 	GUICtrlDelete($idLabelProgress)
 
 	UpdateChiefInfo($aAccountInfo[5][2], $aAccountInfo[15][2], $aAccountInfo[5][1])
 
@@ -538,37 +553,37 @@ Func FormDetailedView($sAMAccountName)
 				EndIf
 
 				SetCheckboxDefaultState($aCheckboxes)
-				ApplyChanges($idDetailedViewForm, $sNewChief, $sAMAccountName, $aAccountInfo, $aCheckboxes, $idInputPassword, _
+				ApplyChanges($idDetailedViewForm, $sNewChief, $sAMAccountName, $aAccountInfo, $aCheckboxes, "", _;$idInputPassword, _
 					$sPhoneNumber, $sEmailAddress, True)
-			Case $idButtonApply
-				ApplyChanges($idDetailedViewForm, $sNewChief, $sAMAccountName, $aAccountInfo, $aCheckboxes, $idInputPassword)
-			Case $idButtonChief
-				Local $idTmp1 = $idInputNameToSearch
-				Local $idTmp2 = $idButtonSearch
-				Local $idTmp3 = $idButtonNext
-				Local $idTmp4 = $idListViewResults
-				Local $idTmp5 = $idLabelName
-				Local $idTmp6 = $idGuiMain
+;~ 			Case $idButtonApply
+;~ 				ApplyChanges($idDetailedViewForm, $sNewChief, $sAMAccountName, $aAccountInfo, $aCheckboxes, $idInputPassword)
+;~ 			Case $idButtonChief
+;~ 				Local $idTmp1 = $idInputNameToSearch
+;~ 				Local $idTmp2 = $idButtonSearch
+;~ 				Local $idTmp3 = $idButtonNext
+;~ 				Local $idTmp4 = $idListViewResults
+;~ 				Local $idTmp5 = $idLabelName
+;~ 				Local $idTmp6 = $idGuiMain
 
-				$sNewChief = FormMainGui(True, $idDetailedViewForm)
-				If $sNewChief Then UpdateChiefInfo($aAccountInfo[5][2], $aAccountInfo[15][2], $sNewChief)
+;~ 				$sNewChief = FormMainGui(True, $idDetailedViewForm)
+;~ 				If $sNewChief Then UpdateChiefInfo($aAccountInfo[5][2], $aAccountInfo[15][2], $sNewChief)
 
-				$idInputNameToSearch = $idTmp1
-				$idButtonSearch = $idTmp2
-				$idButtonNext = $idTmp3
-				$idListViewResults = $idTmp4
-				$idLabelName = $idTmp5
-				$idGuiMain = $idTmp6
-			Case $idButtonShowPass
-				If $bInputPasswordLocked Then
-					GUICtrlSendMsg($idInputPassword, $EM_SETPASSWORDCHAR, 0, 0)
-					$bInputPasswordLocked = False
-				Else
-					GUICtrlSendMsg($idInputPassword, $EM_SETPASSWORDCHAR, $sDefaultPassChar, 0)
-					$bInputPasswordLocked = True
-				EndIf
-				GUICtrlSetState($idInputPassword, $GUI_FOCUS)
-				GUICtrlSetState($idButtonShowPass, $GUI_FOCUS)
+;~ 				$idInputNameToSearch = $idTmp1
+;~ 				$idButtonSearch = $idTmp2
+;~ 				$idButtonNext = $idTmp3
+;~ 				$idListViewResults = $idTmp4
+;~ 				$idLabelName = $idTmp5
+;~ 				$idGuiMain = $idTmp6
+;~ 			Case $idButtonShowPass
+;~ 				If $bInputPasswordLocked Then
+;~ 					GUICtrlSendMsg($idInputPassword, $EM_SETPASSWORDCHAR, 0, 0)
+;~ 					$bInputPasswordLocked = False
+;~ 				Else
+;~ 					GUICtrlSendMsg($idInputPassword, $EM_SETPASSWORDCHAR, $sDefaultPassChar, 0)
+;~ 					$bInputPasswordLocked = True
+;~ 				EndIf
+;~ 				GUICtrlSetState($idInputPassword, $GUI_FOCUS)
+;~ 				GUICtrlSetState($idButtonShowPass, $GUI_FOCUS)
 			Case $aCheckboxes[0][2]
 				VerifyCheckboxes($aCheckboxes)
 			Case $aCheckboxes[1][2]
@@ -583,10 +598,10 @@ EndFunc
 
 
 
-Func ApplyChanges($idParentGui, $sNewChief, $sAMAccountName, ByRef $aAccountInfo, ByRef $aCheckboxes, ByRef $idInputPassword, _
+Func ApplyChanges($idParentGui, $sNewChief, $sAMAccountName, ByRef $aAccountInfo, ByRef $aCheckboxes, $idInputPassword, _
 	$sPhoneNumber = False, $sEmailAddress = False, $bNotificate = False)
 	GUISetState(@SW_DISABLE, $idParentGui)
-	ProgressOn("", "Внесение изменений", "", -1, -1, $DLG_MOVEABLE)
+	ProgressOn('Сброс паролей пользователей клиники "Будь здоров"', "Текущее действие:", "", -1, -1, $DLG_MOVEABLE)
 	Local $sResult = ""
 	Local $sErrors = ""
 
@@ -616,6 +631,7 @@ Func ApplyChanges($idParentGui, $sNewChief, $sAMAccountName, ByRef $aAccountInfo
 	ProgressSet(30, "Проверка параметров")
 	For $i = UBound($aCheckboxes, $UBOUND_ROWS) - 1 To 0 Step -1
 		Local $bState = (GUICtrlRead($aCheckboxes[$i][2]) = $GUI_CHECKED ? 1 : 0)
+		ConsoleWrite(GUICtrlRead($aCheckboxes[$i][2]) & @CRLF)
 		If $bState = $aCheckboxes[$i][1] Then ContinueLoop
 
 		Local $bSuccess = False
@@ -640,17 +656,19 @@ Func ApplyChanges($idParentGui, $sNewChief, $sAMAccountName, ByRef $aAccountInfo
 			$sResult &= "Установлен атрибут '" & $aCheckboxes[$i][0] & "' в значение " & $bState & @CRLF
 			$aCheckboxes[$i][1] = $bState
 		EndIf
+
+		Sleep(20)
 	Next
 
-	Local $sPassword = GUICtrlRead($idInputPassword)
+	Local $sPassword = GetNewPassword();GUICtrlRead($idInputPassword)
 	If $sPassword Then
 		ProgressSet(60, "Установка нового пароля")
-		Local $bSuccess = _AD_SetPassword($sAMAccountName, $sPassword)
+		Local $bSuccess = _AD_SetPassword($sAMAccountName, $sPassword, 1)
 		If Not $bSuccess Then
 			$sErrors &= "Не удается изменить пароль, код ошибки: " & @error & @CRLF
 		Else
 			$sResult &= "Установлен новый пароль" & @CRLF
-			GUICtrlSetData($idInputPassword, "")
+;~ 			GUICtrlSetData($idInputPassword, "")
 		EndIf
 	EndIf
 
@@ -682,15 +700,13 @@ Func ApplyChanges($idParentGui, $sNewChief, $sAMAccountName, ByRef $aAccountInfo
 		ProgressSet(90, "Отправка email умедомления")
 		Local $sMailMessageToSend = "Уважаемый(ая) " & $sUserName & "," & @CRLF & _
 			@CRLF & _
-			"Следующие изменения были внесены в Вашу учетную запись:" & @CRLF & _
-			$sResult & _
-			@CRLF & _
+			"Для Вашей учетной записи '" & $sUserName & "' был сброшен пароль." & @CRLF & @CRLF & _
 			"Сотрудник, выполнивший данные действия: " & $sCurrentUserName & @CRLF & _
 			@CRLF & _
 			"Внимание! Если Вы не обращались в службу технической поддержки с данной заявкой, " & @CRLF & _
 			"то просьба связаться с сотрудниками техподдержки по телефонам: " & @CRLF & _
 			"603, для регионов 30-494"
-		Local $sMailTitle = "Изменение данных Вашей учетной записи"
+		Local $sMailTitle = 'Сброс паролей пользователей клиники "Будь здоров"'
 
 		Local $bSuccess = SendEmail($sMailMessageToSend, $sMailTitle, $sEmailAddress)
 		If Not $bSuccess Then
@@ -705,7 +721,7 @@ Func ApplyChanges($idParentGui, $sNewChief, $sAMAccountName, ByRef $aAccountInfo
 		Local $sMailMessageToSend = "Внесены изменения в учетную запись '" & $sUserName & "':" & _
 			@CRLF & $sResult & @CRLF & $sErrors & @CRLF & "Ответственный сотрудник: " & $sCurrentUserName
 		Local $sMailTitle = "Сброс пароля через приложение"
-		Local $sMailTo = ""
+		Local $sMailTo = "stp@7828882.ru"
 		Local $bSuccess = SendEmail($sMailMessageToSend, $sMailTitle, $sMailTo)
 
 		If Not $bSuccess Then _
@@ -986,14 +1002,14 @@ Func CreateLabelAndInput($textLabel, $textInput, $style = "", $attribute = "", $
 
 	Local $ret = 0
 
-	If Not $attribute Then
+;~ 	If Not $attribute Then
 		$ret = GUICtrlCreateInput($textInput, $iPositionLeft + $iWidthLabel, $iPositionTop, _
 			$isButtonPresent ? ($iWidthInput - $iGap * 4) : $iWidthInput, $iHeightInput, BitOr($style, $ES_AUTOHSCROLL))
-	Else
-		$ret = GUICtrlCreateCombo("", $iPositionLeft + $iWidthLabel, $iPositionTop, _
-		$iWidthInput, $iHeightInput);, BitOr($style, $CBS_AUTOHSCROLL))
-		GUICtrlSetData(-1, _ArrayToString(GetPromptArray($attribute)), $textInput)
-	EndIf
+;~ 	Else
+;~ 		$ret = GUICtrlCreateCombo("", $iPositionLeft + $iWidthLabel, $iPositionTop, _
+;~ 		$iWidthInput, $iHeightInput);, BitOr($style, $CBS_AUTOHSCROLL))
+;~ 		GUICtrlSetData(-1, _ArrayToString(GetPromptArray($attribute)), $textInput)
+;~ 	EndIf
 
 	$iPositionTop += $iGap + $iHeightInput
 	Return $ret
@@ -1020,7 +1036,10 @@ EndFunc
 
 
 Func SendEmail($sMailMessageToSend, $sMailTitle, $sMailTo, $bIsSms = False)
-	Local $sMailServer = ""
+;~ 	Sleep(1000)
+;~ 	Return True
+
+	Local $sMailServer = "smtp.budzdorov.ru"
 	Local $sMailFrom = "Система сброса паролей"
 	Local $sMailLogin = ""
 	Local $sMailPassword = ""
